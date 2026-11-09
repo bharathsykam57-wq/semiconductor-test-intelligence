@@ -55,3 +55,27 @@ def count_missing_values(df: pl.DataFrame) -> dict[str, int]:
         column: df[column].null_count()
         for column in df.columns
     }
+    
+def count_non_finite_values(df: pl.DataFrame) -> dict[str, int]:
+    """
+    Count NaN and infinite values in numeric columns.
+
+    Null values are excluded because they are handled
+    separately by count_missing_values().
+    """
+
+    numeric_columns = [
+        column
+        for column, dtype in df.schema.items()
+        if dtype in (pl.Float32, pl.Float64)
+    ]
+
+    return {
+        column: df.select(
+            (
+                pl.col(column).is_nan().fill_null(False)
+                | pl.col(column).is_infinite().fill_null(False)
+            ).sum()
+        ).item()
+        for column in numeric_columns
+    }

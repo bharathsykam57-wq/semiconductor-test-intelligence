@@ -5,6 +5,7 @@ from src.data_validation.schema import (
     REQUIRED_COLUMNS,
     validate_required_columns,
     count_missing_values,
+    count_non_finite_values,
 )
 
 
@@ -84,4 +85,57 @@ def test_count_missing_values_incomplete_data():
         "device_id": 0,
         "voltage_v": 1,
         "leakage_current_ua": 2,
+    }
+    
+def test_non_finite_values_valid_data():
+    """Valid numerical measurements should have zero non-finite values."""
+
+    df = pl.DataFrame({
+        "device_id": ["D001", "D002"],
+        "voltage_v": [0.8, 1.0],
+        "leakage_current_ua": [12.5, 14.2],
+    })
+
+    result = count_non_finite_values(df)
+
+    assert result == {
+        "voltage_v": 0,
+        "leakage_current_ua": 0,
+    }
+
+
+def test_non_finite_values_nan_and_infinity():
+    """NaN and positive/negative infinity should be detected."""
+
+    df = pl.DataFrame({
+        "device_id": ["D001", "D002", "D003"],
+        "voltage_v": [0.8, float("nan"), 1.0],
+        "leakage_current_ua": [
+            12.5,
+            float("inf"),
+            float("-inf"),
+        ],
+    })
+
+    result = count_non_finite_values(df)
+
+    assert result == {
+        "voltage_v": 1,
+        "leakage_current_ua": 2,
+    }
+
+
+def test_non_finite_values_excludes_nulls():
+    """Null values should not be counted as NaN or infinity."""
+
+    df = pl.DataFrame({
+        "voltage_v": [0.8, None, float("nan")],
+        "current_ma": [10.0, None, float("inf")],
+    })
+
+    result = count_non_finite_values(df)
+
+    assert result == {
+        "voltage_v": 1,
+        "current_ma": 1,
     }
