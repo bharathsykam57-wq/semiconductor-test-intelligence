@@ -26,3 +26,17 @@ def load_parquet(file_path: str | Path) -> pl.DataFrame:
         )
 
     return pl.read_parquet(path)
+
+def load_csv(file_path: str | Path) -> pl.DataFrame:
+    """
+    Load semiconductor test measurements from a CSV file.
+    """
+
+    path = Path(file_path)
+
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"CSV file not found: {path}"
+        )
+
+    return pl.read_csv(path)
