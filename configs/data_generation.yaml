@@ -1,0 +1,68 @@
+project:
+  name: semiconductor-test-intelligence-platform
+  version: 1.0.0
+  description: Synthetic semiconductor manufacturing test data
+
+dataset:
+  random_seed: 42
+  total_lots: 20
+  wafers_per_lot: 5
+  devices_per_wafer: 100
+  measurements_per_device: 100
+  expected_rows: 1000000
+
+manufacturing:
+  lot_variation: 0.02
+  wafer_variation: 0.015
+  device_variation: 0.01
+
+operating_conditions:
+  voltage_v:
+    min: 0.70
+    max: 1.10
+
+  frequency_mhz:
+    min: 400
+    max: 1600
+
+  temperature_c:
+    min: -20
+    max: 125
+
+measurement_noise:
+  current_ma: 0.02
+  leakage_current_ua: 0.05
+  propagation_delay_ns: 0.02
+  performance_score: 0.01
+
+failure_simulation:
+  enabled: true
+
+  category_probabilities:
+    normal: 0.85
+    high_leakage: 0.03
+    timing_failure: 0.03
+    voltage_sensitivity: 0.02
+    thermal_instability: 0.02
+    power_anomaly: 0.02
+    frequency_instability: 0.015
+    intermittent_failure: 0.015
+
+  intermittent_failure_probability: 0.10
+
+  categories:
+    - normal
+    - high_leakage
+    - timing_failure
+    - voltage_sensitivity
+    - thermal_instability
+    - power_anomaly
+    - frequency_instability
+    - intermittent_failure
+
+output:
+  directory: data/raw
+  formats:
+    - parquet
+    - csv
+  chunk_size: 100000

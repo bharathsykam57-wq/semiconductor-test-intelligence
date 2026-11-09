@@ -49,3 +49,6 @@ mlartifacts/
 # Temporary files
 *.tmp
 *.bak
+
+# Generated smoke-test datasets
+data/smoke_test/
