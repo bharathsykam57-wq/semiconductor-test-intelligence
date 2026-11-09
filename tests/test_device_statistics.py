@@ -69,3 +69,30 @@ def test_device_statistics_single_measurement():
     assert result["measurement_count"][0] == 1
     assert result["std_power_mw"][0] is None
     assert result["failure_rate"][0] == 0.0
+    
+def test_new_leakage_and_timing_features():
+    import polars as pl
+
+    from src.feature_engineering.device_statistics import (
+        calculate_device_statistics,
+    )
+
+    df = pl.DataFrame({
+        "lot_id": ["LOT_001"] * 3,
+        "wafer_id": ["WAFER_001"] * 3,
+        "device_id": ["DEVICE_001"] * 3,
+        "leakage_current_ua": [5.0, 10.0, 15.0],
+        "propagation_delay_ns": [1.0, 2.0, 3.0],
+        "power_mw": [10.0, 12.0, 14.0],
+        "test_status": ["PASS", "PASS", "FAIL"],
+    })
+
+    result = calculate_device_statistics(df)
+
+    assert result.height == 1
+
+    assert result["max_leakage_current_ua"][0] == 15.0
+
+    assert abs(
+        result["std_propagation_delay_ns"][0] - 1.0
+    ) < 1e-9

@@ -6,7 +6,9 @@ from sklearn.ensemble import IsolationForest
 
 FEATURE_COLUMNS = [
     "mean_leakage_current_ua",
+    "max_leakage_current_ua",
     "max_propagation_delay_ns",
+    "std_propagation_delay_ns",
     "mean_power_mw",
     "std_power_mw",
 ]

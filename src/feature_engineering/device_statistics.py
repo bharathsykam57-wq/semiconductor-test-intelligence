@@ -38,10 +38,16 @@ def calculate_device_statistics(df: pl.DataFrame) -> pl.DataFrame:
                 pl.col("leakage_current_ua")
                 .mean()
                 .alias("mean_leakage_current_ua"),
+                pl.col("leakage_current_ua")
+                .max()
+                .alias("max_leakage_current_ua"),
 
                 pl.col("propagation_delay_ns")
                 .max()
                 .alias("max_propagation_delay_ns"),
+                pl.col("propagation_delay_ns")
+                .std()
+                .alias("std_propagation_delay_ns"),
 
                 pl.col("power_mw")
                 .mean()

@@ -16,6 +16,12 @@ def make_sample_devices():
         "max_propagation_delay_ns": np.linspace(0.5, 1.5, 20),
         "mean_power_mw": np.linspace(10.0, 20.0, 20),
         "std_power_mw": np.linspace(1.0, 3.0, 20),
+        "max_leakage_current_ua": [
+            10.0 + i for i in range(20)
+        ],
+        "std_propagation_delay_ns": [
+            0.05 + i * 0.01 for i in range(20)
+        ],
     })
 
 
