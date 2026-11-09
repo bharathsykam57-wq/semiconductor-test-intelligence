@@ -125,3 +125,34 @@ def test_creates_output_directory(tmp_path):
     generate_engineering_summary(json_path, output_path)
 
     assert output_path.exists()
+    
+    
+
+def test_report_embeds_existing_chart(tmp_path):
+    """Verify an existing chart is linked correctly in Markdown."""
+
+    json_path = make_sample_report(tmp_path)
+
+    figures_dir = tmp_path / "figures"
+    figures_dir.mkdir()
+
+    chart_path = figures_dir / "wafer_performance.png"
+    chart_path.write_bytes(b"sample chart data")
+
+    output_path = tmp_path / "engineering_report.md"
+
+    generate_engineering_summary(
+        json_path,
+        output_path,
+    )
+
+    content = output_path.read_text(encoding="utf-8")
+
+    expected_link = (
+        "![Wafer-level model performance]"
+        "(figures/wafer_performance.png)"
+    )
+
+    assert "## 7. Wafer Performance Visualization" in content
+    assert expected_link in content
+
