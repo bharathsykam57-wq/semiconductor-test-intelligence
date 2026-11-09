@@ -23,7 +23,11 @@ def test_data_quality_report_valid_data():
     assert report["total_rows"] == 2
     assert report["total_columns"] == 3
     assert report["missing_required_columns"]
-    assert report["range_violations"] is None
+    assert report["range_violations"] == {
+    "voltage_v": 0,
+    "frequency_mhz": 0,
+    "temperature_c": 0,
+    }
 
     assert all(
         count == 0
@@ -59,4 +63,8 @@ def test_data_quality_report_detects_invalid_data():
 
     # Required semiconductor columns are absent,
     # so range validation is skipped in this version.
-    assert report["range_violations"] is None
+    assert report["range_violations"] == {
+    "voltage_v": 1,
+    "frequency_mhz": 0,
+    "temperature_c": 1,
+    }

@@ -111,12 +111,14 @@ def validate_measurement_ranges(
 
         invalid_count = df.select(
             (
-                (
+                pl.col(column).is_finite()
+                & (
                     (pl.col(column) < minimum)
                     | (pl.col(column) > maximum)
                 )
-                .fill_null(False)
-            ).sum()
+            )
+            .fill_null(False)
+            .sum()
         ).item()
 
         violations[column] = int(invalid_count)

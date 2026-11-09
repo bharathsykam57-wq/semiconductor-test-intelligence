@@ -29,12 +29,17 @@ def generate_data_quality_report(
     non_finite_counts = count_non_finite_values(df)
 
     # Range validation requires the specified columns.
-    if missing_columns:
-        range_violations = None
-    else:
-        range_violations = validate_measurement_ranges(
-            df, ranges
-        )
+# Validate ranges for available measurement columns.
+    available_ranges = {
+        column: limits
+        for column, limits in ranges.items()
+        if column in df.columns
+    }
+
+    range_violations = validate_measurement_ranges(
+        df,
+        available_ranges,
+    )
 
     return {
         "total_rows": df.height,

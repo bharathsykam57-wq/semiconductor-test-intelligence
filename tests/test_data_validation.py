@@ -231,3 +231,27 @@ def test_measurement_ranges_invalid_configuration():
         match="min exceeds max",
     ):
         validate_measurement_ranges(df, invalid_ranges)
+        
+def test_measurement_ranges_excludes_non_finite_values():
+    """NaN, infinity, and null should not count as range violations."""
+
+    df = pl.DataFrame({
+        "voltage_v": [
+            0.8,
+            float("nan"),
+            float("inf"),
+            float("-inf"),
+            None,
+            1.25,
+        ],
+    })
+
+    ranges = {
+        "voltage_v": {"min": 0.70, "max": 1.10},
+    }
+
+    result = validate_measurement_ranges(df, ranges)
+
+    assert result == {
+        "voltage_v": 1,
+    }
