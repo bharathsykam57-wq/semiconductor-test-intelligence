@@ -6,6 +6,7 @@ from src.data_validation.schema import (
     validate_required_columns,
     count_missing_values,
     count_non_finite_values,
+    validate_measurement_ranges,
 )
 
 
@@ -139,3 +140,94 @@ def test_non_finite_values_excludes_nulls():
         "voltage_v": 1,
         "current_ma": 1,
     }
+    
+@pytest.fixture
+def operating_ranges():
+    return {
+        "voltage_v": {"min": 0.70, "max": 1.10},
+        "frequency_mhz": {"min": 400, "max": 1600},
+        "temperature_c": {"min": -20, "max": 125},
+    }
+
+
+def test_measurement_ranges_valid(operating_ranges):
+    """Measurements within operating ranges should pass."""
+
+    df = pl.DataFrame({
+        "voltage_v": [0.8, 0.9],
+        "frequency_mhz": [500, 1000],
+        "temperature_c": [25, 50],
+    })
+
+    result = validate_measurement_ranges(df, operating_ranges)
+
+    assert result == {
+        "voltage_v": 0,
+        "frequency_mhz": 0,
+        "temperature_c": 0,
+    }
+
+
+def test_measurement_ranges_invalid(operating_ranges):
+    """Out-of-range measurements should be counted."""
+
+    df = pl.DataFrame({
+        "voltage_v": [0.65, 0.9, 1.25],
+        "frequency_mhz": [300, 1000, 1700],
+        "temperature_c": [-30, 25, 130],
+    })
+
+    result = validate_measurement_ranges(df, operating_ranges)
+
+    assert result == {
+        "voltage_v": 2,
+        "frequency_mhz": 2,
+        "temperature_c": 2,
+    }
+
+
+def test_measurement_ranges_boundaries(operating_ranges):
+    """Minimum and maximum boundary values should be accepted."""
+
+    df = pl.DataFrame({
+        "voltage_v": [0.70, 1.10],
+        "frequency_mhz": [400, 1600],
+        "temperature_c": [-20, 125],
+    })
+
+    result = validate_measurement_ranges(df, operating_ranges)
+
+    assert all(count == 0 for count in result.values())
+
+
+def test_measurement_ranges_missing_column(operating_ranges):
+    """Missing measurement columns should raise ValueError."""
+
+    df = pl.DataFrame({
+        "voltage_v": [0.8],
+        "frequency_mhz": [1000],
+    })
+
+    with pytest.raises(
+        ValueError,
+        match="Missing column for range validation: temperature_c",
+    ):
+        validate_measurement_ranges(df, operating_ranges)
+
+
+def test_measurement_ranges_invalid_configuration():
+    """A minimum greater than a maximum should be rejected."""
+
+    df = pl.DataFrame({
+        "voltage_v": [0.9],
+    })
+
+    invalid_ranges = {
+        "voltage_v": {"min": 1.10, "max": 0.70},
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="min exceeds max",
+    ):
+        validate_measurement_ranges(df, invalid_ranges)

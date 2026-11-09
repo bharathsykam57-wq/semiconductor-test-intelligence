@@ -79,3 +79,46 @@ def count_non_finite_values(df: pl.DataFrame) -> dict[str, int]:
         ).item()
         for column in numeric_columns
     }
+    
+def validate_measurement_ranges(
+    df: pl.DataFrame,
+    ranges: dict[str, dict[str, float]],
+) -> dict[str, int]:
+    """
+    Count measurements outside configured operating ranges.
+
+    Returns a dictionary mapping each checked column
+    to its number of out-of-range measurements.
+
+    Null and non-finite values are handled separately.
+    """
+
+    violations = {}
+
+    for column, limits in ranges.items():
+        if column not in df.columns:
+            raise ValueError(
+                f"Missing column for range validation: {column}"
+            )
+
+        minimum = limits["min"]
+        maximum = limits["max"]
+
+        if minimum > maximum:
+            raise ValueError(
+                f"Invalid range for {column}: min exceeds max"
+            )
+
+        invalid_count = df.select(
+            (
+                (
+                    (pl.col(column) < minimum)
+                    | (pl.col(column) > maximum)
+                )
+                .fill_null(False)
+            ).sum()
+        ).item()
+
+        violations[column] = int(invalid_count)
+
+    return violations
