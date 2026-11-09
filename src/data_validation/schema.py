@@ -40,3 +40,18 @@ def validate_required_columns(df: pl.DataFrame) -> None:
         raise ValueError(
             f"Missing required columns: {missing_columns}"
         )
+        
+def count_missing_values(df: pl.DataFrame) -> dict[str, int]:
+    """
+    Count null values in each column of a semiconductor dataset.
+
+    Returns
+    -------
+    dict[str, int]
+        Column names mapped to their null counts.
+    """
+
+    return {
+        column: df[column].null_count()
+        for column in df.columns
+    }
