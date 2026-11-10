@@ -24,6 +24,11 @@ from src.explainability.feature_deviation import (
     interpret_feature_deviation,
 )
 
+from src.wafer_analytics.wafer_summary import (
+    calculate_wafer_summary,
+    assess_wafer_sample_sizes,
+)
+
 st.set_page_config(
     page_title="Semiconductor Test Intelligence",
     page_icon="🔬",
@@ -1062,6 +1067,247 @@ if EVALUATION_PATH.is_file():
         "They should not be interpreted as validated "
         "performance on unseen manufacturing lots."
     )
+
+
+
+# ==============================================
+# Wafer-Level Engineering Summary
+# ==============================================
+
+st.divider()
+st.header("Wafer-Level Engineering Summary")
+
+st.caption(
+    "Compare electrical characteristics across wafers "
+    "using synthetic semiconductor test data."
+)
+
+wafer_summary = calculate_wafer_summary(df)
+
+st.subheader("Wafer Engineering Metrics")
+
+st.dataframe(
+    wafer_summary.to_pandas(),
+    use_container_width=True,
+    hide_index=True,
+)
+
+# Compare electrical characteristics across wafers
+st.subheader("Electrical Characteristics by Wafer")
+
+metric_options = {
+    "Average Leakage Current (µA)": "avg_leakage_current_ua",
+    "Average Maximum Propagation Delay (ns)": (
+        "avg_max_propagation_delay_ns"
+    ),
+    "Average Power Consumption (mW)": "avg_power_mw",
+    "Average Device Failure Rate": "avg_device_failure_rate",
+}
+
+selected_metric = st.selectbox(
+    "Select an engineering metric",
+    options=list(metric_options.keys()),
+    key="wafer_engineering_metric",
+)
+
+metric_column = metric_options[selected_metric]
+
+wafer_chart_data = (
+    wafer_summary
+    .select(["wafer_id", metric_column])
+    .to_pandas()
+    .set_index("wafer_id")
+)
+
+st.bar_chart(
+    wafer_chart_data,
+    x_label="Wafer",
+    y_label=selected_metric,
+)
+
+
+# ==============================================
+# Wafer Engineering Ranking
+# ==============================================
+
+# ==============================================
+# Wafer Sample Size Validation
+# ==============================================
+
+st.subheader("Wafer Sample Size Assessment")
+
+
+MIN_DEVICES_PER_WAFER = 30
+
+wafer_sample_assessment = assess_wafer_sample_sizes(
+    wafer_summary,
+    min_devices=MIN_DEVICES_PER_WAFER,
+)
+
+
+st.dataframe(
+    wafer_sample_assessment.select([
+        "lot_id",
+        "wafer_id",
+        "device_count",
+        "sample_size_status",
+    ]).to_pandas(),
+    use_container_width=True,
+    hide_index=True,
+)
+
+limited_wafers = wafer_sample_assessment.filter(
+    pl.col("device_count") < MIN_DEVICES_PER_WAFER
+)
+
+if limited_wafers.height > 0:
+    st.warning(
+        f"{limited_wafers.height} wafer(s) contain fewer "
+        f"than {MIN_DEVICES_PER_WAFER} devices. "
+        "Interpret their aggregate statistics cautiously."
+    )
+else:
+    st.success(
+        "All wafers meet the configured sample-size guideline."
+    )
+
+st.caption(
+    "The 30-device threshold is an illustrative dashboard "
+    "guideline, not a statistically justified minimum or "
+    "a validated semiconductor manufacturing standard."
+)
+
+
+st.subheader("Wafer Engineering Ranking")
+
+ranked_wafers = (
+    wafer_summary
+    .sort(metric_column, descending=True)
+    .select([
+        "lot_id",
+        "wafer_id",
+        "device_count",
+        metric_column,
+    ])
+)
+
+st.dataframe(
+    ranked_wafers.to_pandas(),
+    use_container_width=True,
+    hide_index=True,
+)
+
+
+# ==============================================
+# Wafer vs Overall Dataset Average
+# ==============================================
+
+st.subheader("Wafer vs Overall Dataset Average")
+
+# Calculate the device-weighted overall average.
+# This avoids giving a one-device wafer the same
+# influence as a wafer containing 100 devices.
+
+overall_average = (
+    df.select(
+        pl.col({
+            "avg_leakage_current_ua": "mean_leakage_current_ua",
+            "avg_max_propagation_delay_ns": "max_propagation_delay_ns",
+            "avg_power_mw": "mean_power_mw",
+            "avg_device_failure_rate": "failure_rate",
+        }[metric_column]).mean()
+    ).item()
+)
+
+comparison = wafer_summary.with_columns(
+    (pl.col(metric_column) - overall_average)
+    .alias("difference_from_overall")
+)
+
+if overall_average != 0:
+    comparison = comparison.with_columns(
+        (
+            pl.col("difference_from_overall")
+            / abs(overall_average)
+            * 100
+        ).alias("percent_difference")
+    )
+else:
+    comparison = comparison.with_columns(
+        pl.lit(None, dtype=pl.Float64)
+        .alias("percent_difference")
+    )
+
+st.metric(
+    "Overall Device Average",
+    f"{overall_average:.4f}",
+)
+
+st.dataframe(
+    comparison.select([
+        "wafer_id",
+        "device_count",
+        metric_column,
+        "difference_from_overall",
+        "percent_difference",
+    ]).to_pandas(),
+    use_container_width=True,
+    hide_index=True,
+)
+
+st.caption(
+    "Positive differences indicate values above the "
+    "device-weighted dataset average. These are "
+    "descriptive comparisons, not manufacturing "
+    "pass/fail thresholds."
+)
+
+
+# ==============================================
+# Wafer Deviation Visualization
+# ==============================================
+
+st.subheader("Wafer Deviation from Overall Average")
+
+deviation_chart_data = (
+    comparison
+    .select([
+        "wafer_id",
+        "percent_difference",
+    ])
+    .to_pandas()
+    .set_index("wafer_id")
+)
+
+st.bar_chart(
+    deviation_chart_data,
+    x_label="Wafer",
+    y_label="Difference from Overall Average (%)",
+)
+
+st.caption(
+    "Positive values indicate above-average measurements; "
+    "negative values indicate below-average measurements. "
+    "The baseline includes all devices in the dataset."
+)
+
+
+highest_wafer = ranked_wafers.row(0, named=True)
+
+st.info(
+    f"Highest {selected_metric}: "
+    f"{highest_wafer['wafer_id']} "
+    f"({highest_wafer[metric_column]:.4f}). "
+    f"This wafer contains "
+    f"{highest_wafer['device_count']} devices."
+)
+
+
+st.info(
+    "These comparisons are descriptive and use synthetic data. "
+    "Wafers with different device counts may have different "
+    "levels of statistical reliability."
+)
 
 
 # ==================================================
