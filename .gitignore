@@ -61,3 +61,5 @@ reports/figures/*.png
 
 # Generated feature engineering smoke-test data
 data/smoke_test_features/
+# Real-data models generated outside standard data directories
+*.joblib

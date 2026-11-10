@@ -41,6 +41,13 @@ st.set_page_config(
 )
 
 
+# Compact presentation across both workflows; analytics and model calls are unchanged.
+st.markdown(
+    "<style>.block-container {padding-top: 1.5rem; padding-bottom: 1.5rem;}"
+    "[data-testid='stVerticalBlock'] {gap: 0.8rem;}</style>",
+    unsafe_allow_html=True,
+)
+
 DATA_PATH = (
     PROJECT_ROOT
     / "data"
@@ -48,6 +55,14 @@ DATA_PATH = (
     / "device_features"
     / "device_features.parquet"
 )
+
+
+# Route before synthetic data loading so real analysis works independently.
+analysis_mode = st.sidebar.radio("Analysis workflow", ["Synthetic electrical tests", "Real WM-811K wafer maps"], key="analysis_workflow")
+if analysis_mode == "Real WM-811K wafer maps":
+    from dashboard.real_wafers import render_real_wafers
+    render_real_wafers(PROJECT_ROOT)
+    st.stop()
 
 
 # ==================================================
