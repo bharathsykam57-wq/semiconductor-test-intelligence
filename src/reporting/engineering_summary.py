@@ -104,6 +104,38 @@ def generate_engineering_summary(json_path, output_path):
             "![Wafer-level model performance](figures/wafer_performance.png)",
             "",
         ])
+        
+    device_chart_path = (
+        output_path.parent
+        / "figures"
+        / "device_anomaly_scores.png"
+    )
+
+    if device_chart_path.is_file():
+        lines.extend([
+            "",
+            "## 8. Device-Level Anomaly Score Distribution",
+            "",
+            (
+                "The following chart shows device-level Isolation "
+                "Forest anomaly scores from the synthetic dataset."
+            ),
+            "",
+            (
+                "Devices are ranked by anomaly score. "
+                "Higher scores indicate more unusual electrical "
+                "behavior, and scores above zero are flagged."
+            ),
+            "",
+            (
+                "These are exploratory in-sample anomaly scores, "
+                "not held-out evaluation predictions."
+            ),
+            "",
+            "![Device anomaly scores](figures/device_anomaly_scores.png)",
+            "",
+        ])
+
 
     output_path.write_text("\n".join(lines), encoding="utf-8")
 
