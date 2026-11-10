@@ -52,3 +52,9 @@ mlartifacts/
 
 # Generated smoke-test datasets
 data/smoke_test/
+
+
+# Generated analysis reports and figures
+reports/anomaly_evaluation.json
+reports/engineering_anomaly_summary.md
+reports/figures/*.png
