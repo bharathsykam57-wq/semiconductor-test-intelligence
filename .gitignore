@@ -58,3 +58,6 @@ data/smoke_test/
 reports/anomaly_evaluation.json
 reports/engineering_anomaly_summary.md
 reports/figures/*.png
+
+# Generated feature engineering smoke-test data
+data/smoke_test_features/
