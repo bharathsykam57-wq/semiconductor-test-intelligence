@@ -19,6 +19,10 @@ from src.anomaly_detection.isolation_forest import (
     detect_device_anomalies,
 )
 
+from src.explainability.feature_deviation import (
+    calculate_feature_deviations,
+    interpret_feature_deviation,
+)
 
 st.set_page_config(
     page_title="Semiconductor Test Intelligence",
@@ -578,6 +582,73 @@ else:
         use_container_width=True,
         hide_index=True,
     )
+    
+    
+    
+    # ==============================================
+    # Feature deviation analysis
+    # ==============================================
+
+    st.subheader("Electrical Feature Deviation Analysis")
+
+    st.caption(
+        "Compare this device's electrical measurements "
+        "with the full synthetic device dataset."
+    )
+
+    deviation_results = calculate_feature_deviations(
+        df,
+        selected_device,
+    )
+    
+    
+    # Convert the Polars results into a Pandas DataFrame
+    deviation_display = deviation_results.to_pandas()
+
+    # Add a human-readable engineering interpretation
+    deviation_display["interpretation"] = (
+        deviation_display["z_score"].apply(
+            interpret_feature_deviation
+        )
+    )
+
+
+    # Show the most unusual measurements first
+    st.dataframe(
+        deviation_display,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    # Visualize absolute standardized deviations
+    deviation_chart = (
+        deviation_results
+        .select(["feature", "absolute_z_score"])
+        .to_pandas()
+        .set_index("feature")
+    )
+
+    st.bar_chart(
+        deviation_chart,
+        x_label="Electrical Feature",
+        y_label="Absolute Z-Score",
+    )
+
+    # Identify the feature with the largest deviation
+    most_deviant = deviation_results.row(
+        0,
+        named=True,
+    )
+
+    st.info(
+        f"Largest standardized deviation: "
+        f"{most_deviant['feature']} "
+        f"(Z-score: {most_deviant['z_score']:.2f}). "
+        "This describes how unusual the measurement is "
+        "relative to the dataset; it does not establish "
+        "why Isolation Forest flagged the device."
+    )
+
 
     # Engineering interpretation
     st.subheader("Engineering Interpretation")
