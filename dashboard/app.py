@@ -29,6 +29,11 @@ from src.wafer_analytics.wafer_summary import (
     assess_wafer_sample_sizes,
 )
 
+from src.yield_analytics.yield_summary import (
+    calculate_wafer_yield,
+    calculate_lot_yield,
+)
+
 st.set_page_config(
     page_title="Semiconductor Test Intelligence",
     page_icon="🔬",
@@ -1307,6 +1312,179 @@ st.info(
     "These comparisons are descriptive and use synthetic data. "
     "Wafers with different device counts may have different "
     "levels of statistical reliability."
+)
+
+
+# ==============================================
+# Semiconductor Test Yield Analytics
+# ==============================================
+
+st.divider()
+st.header("Semiconductor Test Yield Analytics")
+
+st.caption(
+    "Device-level yield calculated from synthetic "
+    "semiconductor test data. A device is considered "
+    "passing when its recorded failure_rate equals zero."
+)
+
+# Calculate yield for every wafer
+wafer_yield = calculate_wafer_yield(df)
+
+# Overall yield across all devices
+total_devices = int(
+    wafer_yield["total_devices"].sum()
+)
+
+passing_devices = int(
+    wafer_yield["passing_devices"].sum()
+)
+
+failing_devices = int(
+    wafer_yield["failing_devices"].sum()
+)
+
+overall_yield = (
+    passing_devices / total_devices * 100
+)
+
+# KPI cards
+col1, col2, col3, col4 = st.columns(4)
+
+col1.metric("Total Devices", total_devices)
+col2.metric("Passing Devices", passing_devices)
+col3.metric("Failing Devices", failing_devices)
+col4.metric("Overall Yield", f"{overall_yield:.2f}%")
+
+# Wafer-level yield table
+st.subheader("Wafer-Level Yield Summary")
+
+st.dataframe(
+    wafer_yield.to_pandas(),
+    use_container_width=True,
+    hide_index=True,
+)
+
+
+# ==============================================
+# Lot-Level Yield Analytics
+# ==============================================
+
+st.subheader("Lot-Level Yield Summary")
+
+# Aggregate wafer results into lot-level statistics
+lot_yield = calculate_lot_yield(wafer_yield)
+
+# Display lot-level yield statistics
+st.dataframe(
+    lot_yield.to_pandas(),
+    use_container_width=True,
+    hide_index=True,
+)
+
+# Visualize lot-level yield
+st.subheader("Yield Percentage by Manufacturing Lot")
+
+lot_yield_chart = (
+    lot_yield
+    .select(["lot_id", "yield_percent"])
+    .to_pandas()
+    .set_index("lot_id")
+)
+
+st.bar_chart(
+    lot_yield_chart,
+    x_label="Manufacturing Lot",
+    y_label="Device Yield (%)",
+)
+
+
+# ==============================================
+# Lot-Level Sample Size Assessment
+# ==============================================
+
+st.subheader("Lot Sample Size Assessment")
+
+MIN_DEVICES_PER_LOT = 30
+
+# Rename total_devices to device_count because
+# the reusable assessment function expects that name.
+lot_sample_assessment = (
+    assess_wafer_sample_sizes(
+        lot_yield.rename({
+            "total_devices": "device_count"
+        }),
+        min_devices=MIN_DEVICES_PER_LOT,
+    )
+    .rename({
+        "device_count": "total_devices"
+    })
+)
+
+# Display lot-level sample-size information
+st.dataframe(
+    lot_sample_assessment.select([
+        "lot_id",
+        "wafer_count",
+        "total_devices",
+        "sample_size_status",
+    ]).to_pandas(),
+    use_container_width=True,
+    hide_index=True,
+)
+
+# Identify lots with limited sample sizes
+limited_lots = lot_sample_assessment.filter(
+    pl.col("total_devices") < MIN_DEVICES_PER_LOT
+)
+
+if limited_lots.height > 0:
+    st.warning(
+        f"{limited_lots.height} manufacturing lot(s) "
+        f"contain fewer than {MIN_DEVICES_PER_LOT} devices. "
+        "Their yield estimates should be interpreted cautiously."
+    )
+else:
+    st.success(
+        "All manufacturing lots meet the configured "
+        "sample-size guideline."
+    )
+
+st.caption(
+    "The 30-device threshold is an illustrative guideline, "
+    "not a validated semiconductor manufacturing standard."
+)
+
+
+# Highlight sample-size differences between lots
+st.caption(
+    "Lot yield is calculated from total passing and "
+    "tested devices, rather than averaging wafer yields. "
+    "Interpret results cautiously when lots contain "
+    "very different numbers of devices."
+)
+
+
+# Wafer yield visualization
+st.subheader("Yield Percentage by Wafer")
+
+yield_chart = (
+    wafer_yield
+    .select(["wafer_id", "yield_percent"])
+    .to_pandas()
+    .set_index("wafer_id")
+)
+
+st.bar_chart(
+    yield_chart,
+    x_label="Wafer",
+    y_label="Device Yield (%)",
+)
+
+st.caption(
+    "Yield is based on the project's synthetic "
+    "failure-rate proxy, not validated manufacturing "
+    "pass/fail specifications."
 )
 
 
